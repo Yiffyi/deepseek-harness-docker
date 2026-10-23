@@ -14,6 +14,8 @@ Before opening a pull request:
 
 The optional ungoogled-chromium build must keep its version and per-architecture SHA256 values pinned. Do not replace its contributor artifacts, advance their version, or add another architecture without re-running the full browser/noVNC smoke test and reviewing the upstream artifact source. The Debian Chromium image remains the default unless the project's supply-chain policy changes explicitly.
 
+For reproducible screenshots, dispatch `capture-readme.yml` with the exact published DSH version and container revision. It pulls the market image, uses temporary state and loopback-only ports, tests navigation, the provider directory, market metadata, noVNC and draft recovery, then uploads three real Light captures and a provenance JSON file. Download and visually inspect every image before committing it; the workflow never pushes README changes or configures a model. Update the capture date/version in both READMEs and `assets/README.md` after verification. No private volume, provider Secret, or real workspace may be attached to this job.
+
 Run `make upstream-check` when reviewing an upstream DSH release. A GitHub tag alone is not sufficient for this project: the same version must exist as an installable `@deepseek-ai/dsh` npm artifact before changing `DSH_VERSION`.
 
 The public image and plugin must not contain private provider endpoints, credentials, company-internal skills, or personal workspace mounts. Keep machine-specific Compose additions in the git-ignored `compose.local.yaml`.

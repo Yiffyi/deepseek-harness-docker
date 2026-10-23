@@ -1,0 +1,78 @@
+name: Capture Light README screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact DSH version already published as a market image
+        required: true
+        default: 0.2.1-rc.3
+        type: string
+      revision:
+        description: Immutable container revision, for example r1
+        required: true
+        default: r1
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: Isolated Light UI and draft recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DSH_UI_VERSION: ${{ inputs.version }}
+      DSH_UI_REVISION: ${{ inputs.revision }}
+      DSH_UI_MARKET_VERSION: 1.66.9
+      PLAYWRIGHT_VERSION: 1.64.1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Validate immutable version inputs
+        shell: bash
+        run: |
+          [[ "${DSH_UI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]
+          [[ "${DSH_UI_REVISION}" =~ ^r[1-9][0-9]*$ ]]
+      - name: Install pinned screenshot browser and CJK fonts
+        run: |
+          npm install --prefix "${RUNNER_TEMP}/dsh-ui-capture" --ignore-scripts --no-audit --no-fund --save-exact "playwright@${PLAYWRIGHT_VERSION}"
+          "${RUNNER_TEMP}/dsh-ui-capture/node_modules/.bin/playwright" install --with-deps chromium
+          sudo apt-get install --yes --no-install-recommends fonts-noto-cjk
+          echo "DSH_UI_PLAYWRIGHT_MODULE=${RUNNER_TEMP}/dsh-ui-capture/node_modules/playwright" >> "${GITHUB_ENV}"
+      - name: Start a published image with temporary state only
+        run: |
+          image="docker.io/runzhliu/deepseek-harness:${DSH_UI_VERSION}-${DSH_UI_REVISION}-market.1"
+          docker pull "${image}"
+          docker run --detach --name dsh-readme-ui \
+            --label purpose=dsh-readme-verification \
+            --publish 127.0.0.1:3179:3080 --publish 127.0.0.1:6179:6080 \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=512m \
+            --tmpfs /home/node/.dsh:rw,nosuid,nodev,size=512m,uid=1000,gid=1000 \
+            --tmpfs /workspace:rw,nosuid,nodev,size=64m,uid=1000,gid=1000 \
+            --shm-size 1g --cap-drop ALL --security-opt no-new-privileges:true \
+            --pids-limit 512 --env HOME=/workspace --env DSH_TELEMETRY_DISABLED=1 \
+            --env DSH_DESKTOP_PUBLIC_PORT=6179 "${image}"
+          docker exec dsh-readme-ui mkdir -p /workspace/demo-project /workspace/draft-check /workspace/demo-project/draft-check
+      - name: Verify UI and capture real screenshots
+        run: node scripts/capture-readme.cjs "${DSH_UI_VERSION}"
+      - name: Upload captures for manual inspection
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: readme-light-${{ inputs.version }}-${{ inputs.revision }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            assets/deepseek-harness-web.png
+            assets/plugin-market-webui.png
+            assets/browser-desktop-webui.png
+            assets/capture-provenance.json
+      - name: Remove the temporary container
+        if: always()
+        run: docker container rm --force dsh-readme-ui >/dev/null 2>&1 || true

@@ -153,7 +153,12 @@ dockerhub-check:
 version-check:
 	./scripts/check-version-consistency.sh $(DSH_VERSION) $(IMAGE_VERSION) $(PNPM_VERSION) $(DSH_MARKET_VERSION) $(MARKET_IMAGE_VERSION) $(BROWSER_PLUGIN_VERSION) $(UNGOOGLED_CHROMIUM_VERSION) $(UNGOOGLED_IMAGE_VERSION) $(UNGOOGLED_CHROMIUM_AMD64_SHA256) $(UNGOOGLED_CHROMIUM_ARM64_SHA256) $(BWRAP_IMAGE_VERSION) $(CADDY_VERSION)
 
-verify: compose-check helm-check plugin-check dockerhub-check version-check
+.PHONY: ui-check
+
+ui-check:
+	node --check scripts/capture-readme.cjs
+
+verify: compose-check helm-check plugin-check dockerhub-check version-check ui-check
 
 upstream-check:
 	./scripts/check-upstream-dsh.sh $(DSH_VERSION)

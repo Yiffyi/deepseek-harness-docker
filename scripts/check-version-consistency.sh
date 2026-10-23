@@ -96,6 +96,8 @@ require_literal .github/workflows/publish-dockerhub.yml "MARKET_IMAGE_VERSION: $
 require_literal .github/workflows/publish-dockerhub.yml "UNGOOGLED_IMAGE_VERSION: ${ungoogled_image_version}"
 require_literal .github/workflows/publish-dockerhub.yml "BWRAP_IMAGE_VERSION: ${bwrap_image_version}"
 require_literal .github/workflows/upstream-dsh.yml "./scripts/check-upstream-dsh.sh ${dsh_version}"
+require_literal .github/workflows/capture-readme.yml "default: ${dsh_version}"
+require_literal .github/workflows/capture-readme.yml "DSH_UI_MARKET_VERSION: ${market_version}"
 require_literal plugins/dsh-browser-desktop/package.json "\"version\": \"${browser_plugin_version}\""
 require_literal plugins/dsh-browser-desktop/package.json '"@deepseek-ai/dsh-client-modules"'
 require_literal web.cordis.patch.yml "name: '@deepseek-ai/dsh-browser-use'"
