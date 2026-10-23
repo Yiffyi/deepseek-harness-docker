@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## 0.1.26 - 2026-10-24
+
+- Upgrade the official runtime and matching Browser Use packages to `@deepseek-ai/dsh@0.2.1-rc.3`, with immutable container revision `0.2.1-rc.3-r1` and Helm chart `0.1.26`.
+- Include upstream More menus for plugin navigation, unsent draft recovery after switching sessions, and API-key model catalog updates aligned with account sign-in.
+- Retain browser-desktop `0.1.5`, optional market `1.66.9`, pinned ungoogled-chromium `152.0.7977.82-1`, and the existing authentication, network and sandbox boundaries without modifying upstream source.
+
 ## 0.1.25 - 2026-10-17
 
 - Upgrade the official runtime and Browser Use packages to `@deepseek-ai/dsh@0.2.1-rc.2`, with immutable container revision `0.2.1-rc.2-r1` and Helm chart `0.1.25`.
