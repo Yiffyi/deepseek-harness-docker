@@ -1,0 +1,57 @@
+services:
+  dsh:
+    build:
+      dockerfile: Dockerfile.simple
+    image: ${DSH_IMAGE_REPOSITORY:-ghcr.io/yiffyi/deepseek-harness}:${DSH_IMAGE_VERSION:-0.2.1-rc.3-r1}
+    environment:
+      DSH_TELEMETRY_DISABLED: "1"
+      DSH_DESKTOP_ENABLED: "1"
+      NARB_DISABLE_NATIVE_CACHE: "1" # required if /tmp mounted with noexec
+      HOME: /workspace
+    volumes:
+      - ${DSH_DATA:-dsh-data}:/data
+      - ${DSH_WORKSPACE:-dsh-workspace}:/workspace
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=512m
+    # Chromium uses /dev/shm for renderer processes. This mirrors the useful
+    # runtime setting from docker-antigravity without adopting its amd64-only
+    # desktop base image.
+    shm_size: "1gb"
+    pids_limit: 512
+    restart: unless-stopped
+    ports:
+      - "3080:80"
+      # - "3080:3080"
+      # - "443:443"
+      # - "443:443/udp"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3080/').then(r => { if (r.status !== 401) process.exit(1) }).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
+
+  caddy:
+    image: caddy:2.11-alpine
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    network_mode: service:dsh
+    environment:
+      DSH_WEB_HOST: ${DSH_WEB_HOST:?set DSH_WEB_HOST to the DNS name or server IP}
+      DSH_WEB_USERNAME: ${DSH_WEB_USERNAME:?set DSH_WEB_USERNAME}
+      DSH_WEB_PASSWORD_HASH: ${DSH_WEB_PASSWORD_HASH:?set a Caddy bcrypt password hash}
+    volumes:
+      - $PWD/caddy:/etc/caddy
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  dsh-data:
+  dsh-workspace:
+  caddy_data:
+  caddy_config:

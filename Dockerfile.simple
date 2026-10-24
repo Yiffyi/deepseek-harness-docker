@@ -1,0 +1,61 @@
+
+ARG BASE_IMAGE=node:24
+ARG PNPM_IMAGE=ghcr.io/pnpm/pnpm:12
+ARG CADDY_IMAGE=caddy:2.11
+ARG DSH_VERSION=0.2.1-rc.3
+
+FROM ${CADDY_IMAGE} AS caddy
+FROM ${PNPM_IMAGE} AS pnpm
+
+FROM ${BASE_IMAGE} AS dsh
+
+COPY --from=pnpm /opt/pnpm /opt/pnpm
+RUN --mount=type=cache,id=pnpm,target=/var/cache/pnpm \
+    ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm \
+    && mkdir -p /opt/dsh \
+    && cd /opt/dsh \
+    && pnpm approve-builds @deepseek-ai/dsh-subprocess-local koffi node-pty @google/genai protobufjs \
+    && pnpm add --store-dir /var/cache/pnpm "@deepseek-ai/dsh@${DSH_VERSION}"
+
+FROM ${BASE_IMAGE}
+
+COPY --from=pnpm /opt/pnpm /opt/pnpm
+
+RUN \
+    ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm \
+    && apt-get update \
+    && apt-get install --yes --no-install-recommends \
+        tini \
+        ca-certificates \
+        build-essential \
+        python3 \
+        curl \
+        wget \
+        git \
+        openssh-client \
+        file \
+        unzip \
+        zip \
+        chromium \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV DSH_HOME=/data/dsh \
+    PNPM_HOME=/data/pnpm \
+    XDG_CACHE_HOME=/data/.cache \
+    XDG_CONFIG_HOME=/data/.config \
+    XDG_DATA_HOME=/data/.local/share \
+    XDG_STATE_HOME=/data/.local/state
+
+ENV PATH=$PNPM_HOME/bin:/opt/dsh/node_modules/.bin:$PATH
+
+RUN mkdir -p "${DSH_HOME}" /workspace
+
+WORKDIR /workspace
+
+EXPOSE 3080
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+COPY --from=dsh /opt/dsh /opt/dsh
+
+CMD ["dsh", "web", "--no-open"]

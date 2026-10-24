@@ -1,0 +1,20 @@
+{
+	auto_https disable_redirects
+}
+
+{$DSH_WEB_HOST}, http://:80 {
+	tls internal
+
+	basic_auth {
+		{$DSH_WEB_USERNAME} {$DSH_WEB_PASSWORD_HASH}
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3080 {
+			# Caddy preserves the browser Host/Origin for DSH trusted-host checks.
+			# Do not forward the gateway credential into Harness or its plugins.
+			header_up -Authorization
+			flush_interval -1
+		}
+	}
+}
