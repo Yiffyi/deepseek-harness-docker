@@ -352,6 +352,27 @@ docker compose down
 
 `docker compose down` 不删除命名卷。只有明确执行 `docker compose down --volumes` 才会删除持久化的配置、凭据、会话，以及默认 `dsh-workspace` 卷中的全部工作区数据；使用该参数前必须先备份需要保留的内容。
 
+## 精简镜像的网络入口
+
+`Dockerfile.simple` 同时启动 DSH（`127.0.0.1:3080`）与 socat（`0.0.0.0:3081`），由 socat 原样转发 TCP 流量。入口脚本通过 `wait -n` 在任一进程退出时结束容器，剩余进程由容器退出清理。`tini -g` 将停止信号转发给入口脚本、DSH 和 socat 所在的进程组；脚本不额外等待应用完成收尾。socat 仅由环境变量 `DSH_SOCAT_ENABLED` 控制，默认 `1` 开启，设为 `0` 关闭并直接执行启动命令；运行 CLI 或 shell 时也可显式关闭。
+
+构建并直接部署单容器：
+
+```bash
+docker build -f Dockerfile.simple -t dsh:simple .
+docker run -d --name dsh --restart unless-stopped \
+  -p 3080:3081 -e HOME=/workspace \
+  -v dsh-data:/data -v dsh-workspace:/workspace dsh:simple
+```
+
+首次访问时，将 DSH 日志中的启动 token 用于实际访问地址。socat 保留 DSH 的 token、Cookie 和 Host/Origin 校验，不提供 Caddy 的 TLS 或 Basic Auth。
+
+`compose.simple.yaml` 中，DSH 使用 `network_mode: service:caddy` 加入 Caddy 的网络命名空间，两者共享回环地址和监听端口。端口映射统一配置在 `caddy` 服务：宿主 `3080` 映射到 Caddy 的 `80`，Caddy 再访问 `127.0.0.1:3080`。socat 同时运行，但默认不发布其端口；如需同时直接访问，在 `caddy.ports` 中启用 `3081:3081`，不要在 `dsh` 服务上配置 `ports`。当前健康检查固定通过 `3081` 检查整条转发链路。
+
+若要让 DSH 和 Caddy 各自使用独立网络命名空间，先移除 DSH 的 `network_mode: service:caddy`，再让两个容器加入同一个 Docker 网络，并将 Caddy 上游改为 `dsh:3081`（`dsh` 为服务名或网络别名），无需发布 DSH 的宿主端口。保留现有 Caddy 配置中的认证和 `header_up -Authorization` 设置。
+
+socat 固定将 `0.0.0.0:3081` 转发到 `127.0.0.1:3080`，开启时 DSH 必须使用默认端口 `3080`。单容器部署可通过 `docker run -e DSH_SOCAT_ENABLED=0 ...` 关闭 socat。当前 Compose 在 `dsh.environment` 中固定设置了 `DSH_SOCAT_ENABLED: 1`；如需关闭，将其改为 `0`，同时将健康检查端口改为 `3080`。仅修改 `.env` 不会覆盖该固定值。关闭 socat 后，共享网络命名空间的 Caddy 仍可正常访问 DSH。这套转发方案用于独立容器网络，不用于 host networking。
+
 ## 直接使用 Docker
 
 构建镜像：

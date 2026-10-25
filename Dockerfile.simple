@@ -1,13 +1,12 @@
 
 ARG BASE_IMAGE=node:24
 ARG PNPM_IMAGE=ghcr.io/pnpm/pnpm:12
-ARG CADDY_IMAGE=caddy:2.11
 ARG DSH_VERSION=0.2.1-rc.3
 
-FROM ${CADDY_IMAGE} AS caddy
 FROM ${PNPM_IMAGE} AS pnpm
 
 FROM ${BASE_IMAGE} AS dsh
+ARG DSH_VERSION
 
 COPY --from=pnpm /opt/pnpm /opt/pnpm
 RUN --mount=type=cache,id=pnpm,target=/var/cache/pnpm \
@@ -26,6 +25,8 @@ RUN \
     && apt-get update \
     && apt-get install --yes --no-install-recommends \
         tini \
+        bash \
+        socat \
         ca-certificates \
         build-essential \
         python3 \
@@ -39,7 +40,8 @@ RUN \
         chromium \
     && rm -rf /var/lib/apt/lists/*
 
-ENV DSH_HOME=/data/dsh \
+ENV DSH_SOCAT_ENABLED=1 \
+    DSH_HOME=/data/dsh \
     PNPM_HOME=/data/pnpm \
     XDG_CACHE_HOME=/data/.cache \
     XDG_CONFIG_HOME=/data/.config \
@@ -52,9 +54,11 @@ RUN mkdir -p "${DSH_HOME}" /workspace
 
 WORKDIR /workspace
 
-EXPOSE 3080
+EXPOSE 3081
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
+COPY --chmod=755 scripts/dsh-simple-entrypoint /docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/docker-entrypoint.sh"]
 
 COPY --from=dsh /opt/dsh /opt/dsh
 
