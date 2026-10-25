@@ -38,9 +38,18 @@ RUN \
         unzip \
         zip \
         chromium \
+        fonts-noto-cjk \
+        xvfb \
+        x11vnc \
+        novnc \
+        websockify \
+        x11-utils \
+        openbox \
     && rm -rf /var/lib/apt/lists/*
 
 ENV DSH_SOCAT_ENABLED=1 \
+    DSH_DESKTOP_ENABLED=1 \
+    DISPLAY=:99 \
     DSH_HOME=/data/dsh \
     PNPM_HOME=/data/pnpm \
     XDG_CACHE_HOME=/data/.cache \
@@ -54,11 +63,11 @@ RUN mkdir -p "${DSH_HOME}" /workspace
 
 WORKDIR /workspace
 
-EXPOSE 3081
+EXPOSE 3081 6080
 
-COPY --chmod=755 scripts/dsh-simple-entrypoint /docker-entrypoint.sh
+COPY --chmod=755 scripts/dsh-simple-entrypoint.py /docker-entrypoint.py
 
-ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/docker-entrypoint.py"]
 
 COPY --from=dsh /opt/dsh /opt/dsh
 

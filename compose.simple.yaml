@@ -26,7 +26,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3081/').then(r => { if (r.status !== 401) process.exit(1) }).catch(() => process.exit(1))"
+        - "const port = process.env.DSH_SOCAT_ENABLED === '1' ? 3081 : 3080; const checks = [fetch('http://127.0.0.1:' + port + '/').then(r => { if (r.status !== 401) throw Error('dsh'); })]; if (process.env.DSH_DESKTOP_ENABLED === '1') checks.push(fetch('http://127.0.0.1:6080/vnc.html').then(r => { if (!r.ok) throw Error('novnc'); })); Promise.all(checks).catch(() => process.exit(1))"
       interval: 15s
       timeout: 3s
       start_period: 20s
@@ -41,6 +41,8 @@ services:
       - "3080:80"
       # Optional direct socat access: dsh shares this service's network namespace.
       # - "3081:3081"
+      # Optional local noVNC access without Caddy authentication.
+      # - "127.0.0.1:6080:6080"
       # - "443:443"
       # - "443:443/udp"
     environment:

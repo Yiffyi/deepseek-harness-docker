@@ -9,6 +9,14 @@
 		{$DSH_WEB_USERNAME} {$DSH_WEB_PASSWORD_HASH}
 	}
 
+	@desktop_entry path /desktop /desktop/
+	redir @desktop_entry /desktop/vnc.html?autoconnect=1&path=desktop/websockify 302
+	handle_path /desktop/* {
+		reverse_proxy 127.0.0.1:6080 {
+			header_up -Authorization
+		}
+	}
+
 	handle {
 		reverse_proxy 127.0.0.1:3080 {
 			# Caddy preserves the browser Host/Origin for DSH trusted-host checks.
