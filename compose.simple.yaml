@@ -2,7 +2,7 @@ services:
   dsh:
     build:
       dockerfile: Dockerfile.simple
-    image: ${DSH_IMAGE_REPOSITORY:-ghcr.io/yiffyi/deepseek-harness}:${DSH_IMAGE_VERSION:-0.2.1-rc.3-r1}
+    image: ${DSH_IMAGE_REPOSITORY:-ghcr.io/yiffyi/deepseek-harness-docker}:${DSH_IMAGE_VERSION:-0.2.1-rc.3-r1}
     environment:
       DSH_SOCAT_ENABLED: 1
       DSH_TELEMETRY_DISABLED: "1"
@@ -13,7 +13,7 @@ services:
       - ${DSH_DATA:-dsh-data}:/data
       - ${DSH_WORKSPACE:-dsh-workspace}:/workspace
     tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=512m
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
     # Chromium uses /dev/shm for renderer processes. This mirrors the useful
     # runtime setting from docker-antigravity without adopting its amd64-only
     # desktop base image.
